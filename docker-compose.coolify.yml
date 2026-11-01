@@ -10,15 +10,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    # SERVICE_URL_DOCMOST is Coolify's public URL for this service and the
-    # _3000 suffix tells its proxy the container port. If Coolify leaves them
-    # empty, set APP_URL=https://your.domain in Environment Variables instead.
-    expose:
-      - '3000'
     environment:
       - SERVICE_URL_DOCMOST_3000
       - APP_SECRET=$SERVICE_BASE64_APPKEY
-      - 'APP_URL=${SERVICE_URL_DOCMOST:-${APP_URL}}'
+      - APP_URL=$SERVICE_URL_DOCMOST_3000
       - 'DATABASE_URL=postgresql://$SERVICE_USER_POSTGRES:$SERVICE_PASSWORD_POSTGRES@postgresql/docmost?schema=public'
       - 'REDIS_URL=redis://redis:6379'
       - 'MAIL_DRIVER=${MAIL_DRIVER:-smtp}'
