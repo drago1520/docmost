@@ -13,7 +13,9 @@ services:
     environment:
       - SERVICE_URL_DOCMOST_3000
       - APP_SECRET=$SERVICE_BASE64_APPKEY
-      - APP_URL=$SERVICE_URL_DOCMOST_3000
+      # Coolify shows SERVICE_URL_DOCMOST_3000 but does not inject it for
+      # git-built compose apps, so set APP_URL in Environment Variables.
+      - APP_URL=${APP_URL}
       - 'DATABASE_URL=postgresql://$SERVICE_USER_POSTGRES:$SERVICE_PASSWORD_POSTGRES@postgresql/docmost?schema=public'
       - 'REDIS_URL=redis://redis:6379'
       - 'MAIL_DRIVER=${MAIL_DRIVER:-smtp}'
