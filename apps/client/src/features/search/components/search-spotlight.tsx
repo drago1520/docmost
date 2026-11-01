@@ -115,14 +115,33 @@ export function SearchSpotlight({ spaceId }: SearchSpotlightProps) {
   const isAttachmentSearch =
     filters.contentType === "attachment" && hasAttachmentIndexing;
 
-  const resultItems = (searchResults || []).map((result) => (
-    <SearchResultItem
-      key={result.id}
-      result={result}
-      isAttachmentResult={isAttachmentSearch}
-      showSpace={!filters.spaceId}
-    />
-  ));
+  // one row per matching fragment, not one per page
+  // shortcut: splits on ts_headline's default " ... " delimiter, switch to a
+  // fragments array from the server if page text ever contains that literally
+  const resultItems = (searchResults || [])
+    .flatMap((result) => {
+      const fragments = ("highlight" in result ? result.highlight : "")
+        .split(" ... ")
+        .filter(Boolean);
+      if (isAttachmentSearch || fragments.length < 2) return [result];
+      return fragments.map((highlight) => ({
+        ...result,
+        highlight,
+        matchedText: [
+          ...new Set(
+            Array.from(highlight.matchAll(/<b>([^<]*)<\/b>/gi), (m) => m[1]),
+          ),
+        ],
+      }));
+    })
+    .map((result, i) => (
+      <SearchResultItem
+        key={`${result.id}-${i}`}
+        result={result}
+        isAttachmentResult={isAttachmentSearch}
+        showSpace={!filters.spaceId}
+      />
+    ));
 
   const handleSpotlightOpen = () => {
     if (
