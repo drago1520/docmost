@@ -12,6 +12,7 @@ import { AttachmentModule } from './attachment/attachment.module';
 import { CommentModule } from './comment/comment.module';
 import { SearchModule } from './search/search.module';
 import { McpModule } from './mcp/mcp.module';
+import { OAuthModule } from './oauth/oauth.module';
 import { SpaceModule } from './space/space.module';
 import { GroupModule } from './group/group.module';
 import { CaslModule } from './casl/casl.module';
@@ -42,6 +43,7 @@ import { ClsMiddleware } from 'nestjs-cls';
     FavoriteModule,
     SearchModule,
     McpModule,
+    OAuthModule,
     SpaceModule,
     GroupModule,
     CaslModule,

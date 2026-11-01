@@ -14,31 +14,43 @@ A minimal [Model Context Protocol](https://modelcontextprotocol.io) server, serv
 
 ## Authentication
 
-The endpoint accepts a normal Docmost session token, either as `Authorization: Bearer <token>` or as `?token=<token>` in the URL. The query form exists because claude.ai custom connectors cannot send headers.
+The endpoint is an OAuth 2.1 protected resource. A request without a token gets a `401` whose `WWW-Authenticate` header points at `/.well-known/oauth-protected-resource/mcp`, and from there any MCP client discovers the authorization server, registers itself and runs the PKCE authorization-code flow on its own. The pieces, all in `apps/server/src/core/oauth/`:
 
-To get a token, log in to Docmost in your browser, open DevTools, go to Application, then Cookies, and copy the value of `authToken`. It is valid for 30 days and logging out revokes it.
+| Endpoint | Purpose |
+|---|---|
+| `GET /.well-known/oauth-authorization-server` | server metadata |
+| `GET /.well-known/oauth-protected-resource/mcp` | resource metadata |
+| `POST /api/oauth/register` | dynamic client registration, public clients only, `https` or `localhost` redirect URIs |
+| `/oauth/consent` | the consent page in the web client; it asks you to log in first if needed |
+| `POST /api/oauth/authorize-info`, `POST /api/oauth/authorize` | what the consent page calls to show and record your decision |
+| `POST /api/oauth/token` | code exchange with PKCE S256, and refresh with rotation |
+
+Access tokens last 1 hour, refresh tokens 30 days, and both are stored in the `oauth_*` tables so revoking a grant takes effect immediately. Scopes are `read` and `write`, and the wrapped REST endpoints enforce them, so a read-only grant can search and read but gets `403 insufficient_scope` from `create_page` and `update_page`.
+
+A normal Docmost session token in `Authorization: Bearer` still works too, which is handy for curl.
 
 ## Connect from claude.ai
 
-claude.ai needs a public HTTPS URL. For a local instance, tunnel the backend port:
+claude.ai needs a public HTTPS URL and all three of the consent page, the API and `/mcp` must be on that one origin. For a local dev instance, point the tunnel at the Vite dev server, which proxies `/api`, `/mcp` and `/.well-known` to the backend:
 
 ```bash
-cloudflared tunnel --url http://localhost:3000
+cloudflared tunnel --url http://localhost:5600
 ```
 
-Then in claude.ai: Settings, Connectors, Add custom connector, no OAuth, with this URL:
+Set `APP_URL` in `.env` to the tunnel URL, since the OAuth metadata is built from it, then restart the backend. In claude.ai go to Settings, Connectors, Add custom connector, and enter:
 
 ```
-https://<your-tunnel>.trycloudflare.com/mcp?token=<authToken>
+https://<your-tunnel>.trycloudflare.com/mcp
 ```
+
+Leave the OAuth client fields empty. claude.ai registers itself, sends you to the Docmost consent page, and stores the tokens.
 
 ## Connect from Claude Code or Claude Desktop
 
-Both can send headers, so keep the token out of the URL:
+Both run the same OAuth flow by themselves:
 
 ```bash
-claude mcp add --transport http docmost http://localhost:3000/mcp \
-  --header "Authorization: Bearer <authToken>"
+claude mcp add --transport http docmost http://localhost:3000/mcp
 ```
 
 ## Smoke test
@@ -55,6 +67,6 @@ A missing or bad token returns `401`. A tool failure comes back as a tool error 
 
 ## Limits
 
-- No OAuth. Anyone holding the token has your full session, so do not put a production token in a URL that gets logged.
+- Single workspace: dynamic clients are attached to the first workspace, which is what a self-hosted install has.
 - Stateless: one MCP server instance per request, no sessions, no server-to-client notifications.
 - Adding a tool is one entry in `TOOLS` in `mcp.service.ts`: name, description, zod input, REST path, and a `pick` that trims the response.

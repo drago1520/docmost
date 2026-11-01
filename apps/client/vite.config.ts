@@ -64,6 +64,8 @@ export default defineConfig(({ mode }) => {
           target: APP_URL,
           changeOrigin: false,
         },
+        "/mcp": { target: APP_URL },
+        "/.well-known": { target: APP_URL },
         "/socket.io": {
           target: APP_URL,
           ws: true,

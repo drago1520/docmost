@@ -1,37 +1,52 @@
 import {
   All,
+  ArgumentsHost,
+  Catch,
   Controller,
-  ExecutionContext,
+  ExceptionFilter,
   Injectable,
   Req,
   Res,
+  UnauthorizedException,
+  UseFilters,
   UseGuards,
 } from '@nestjs/common';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/server';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { McpService } from './mcp.service';
+import { OAuthScope } from '../../common/decorators/oauth-scope.decorator';
+import { EnvironmentService } from '../../integrations/environment/environment.service';
 
-// shortcut: token in the query string because claude.ai connectors cannot set
-// headers, upgrade to OAuth when exposing this beyond a personal instance
+// MCP clients discover the OAuth server from the 401's WWW-Authenticate header.
 @Injectable()
-export class McpAuthGuard extends JwtAuthGuard {
-  canActivate(context: ExecutionContext) {
-    const req = context.switchToHttp().getRequest();
-    const token = req.query?.token;
-    if (token && !req.headers.authorization) {
-      req.headers.authorization = `Bearer ${token}`;
-    }
-    return super.canActivate(context);
+@Catch(UnauthorizedException)
+export class McpUnauthorizedFilter implements ExceptionFilter {
+  constructor(private env: EnvironmentService) {}
+
+  catch(_: UnauthorizedException, host: ArgumentsHost) {
+    const base = this.env.getAppUrl().replace(/\/$/, '');
+    host
+      .switchToHttp()
+      .getResponse<FastifyReply>()
+      .header(
+        'WWW-Authenticate',
+        `Bearer resource_metadata="${base}/.well-known/oauth-protected-resource/mcp"`,
+      )
+      .status(401)
+      .send({ error: 'unauthorized' });
   }
 }
 
 @Controller('mcp')
-@UseGuards(McpAuthGuard)
+@UseGuards(JwtAuthGuard)
+@UseFilters(McpUnauthorizedFilter)
 export class McpController {
   constructor(private mcpService: McpService) {}
 
   // The MCP SDK speaks web-standard Request/Response, so bridge Fastify to it.
+  // scopes are enforced per tool by the wrapped REST endpoint
+  @OAuthScope('read')
   @All()
   async handle(@Req() req: FastifyRequest, @Res() reply: FastifyReply) {
     const headers = new Headers();
