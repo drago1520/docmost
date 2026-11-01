@@ -188,7 +188,7 @@ export class SearchService {
         .selectFrom('pages')
         .select([
           'id',
-          sql<string>`ts_headline('english', substring(text_content, 1, 100000), to_tsquery('english', f_unaccent(${searchQuery})),'MinWords=9, MaxWords=10, MaxFragments=3')`.as(
+          sql<string>`ts_headline('english', replace(substring(text_content, 1, 1000000), '<', '< '), to_tsquery('english', f_unaccent(${searchQuery})),'MinWords=9, MaxWords=10, MaxFragments=50')`.as(
             'highlight',
           ),
         ])

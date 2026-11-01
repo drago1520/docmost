@@ -15,6 +15,7 @@ import { SessionActivityService } from '../../session/session-activity.service';
 import { FastifyRequest } from 'fastify';
 import { extractBearerTokenFromHeader, isUserDisabled } from '../../../common/helpers';
 import { ModuleRef } from '@nestjs/core';
+import { OAuthService } from '../../oauth/oauth.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -150,6 +151,8 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       });
     }
 
-    throw new UnauthorizedException('Enterprise OAuth module missing');
+    return this.moduleRef
+      .get(OAuthService, { strict: false })
+      .validateOAuthToken(payload);
   }
 }
