@@ -10,10 +10,13 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    # Coolify does not fill SERVICE_URL_* for git-built compose apps, so set
+    # APP_URL=https://your.domain in the resource's Environment Variables.
+    expose:
+      - '3000'
     environment:
-      - SERVICE_URL_DOCMOST_3000
       - APP_SECRET=$SERVICE_BASE64_APPKEY
-      - APP_URL=$SERVICE_URL_DOCMOST_3000
+      - 'APP_URL=${APP_URL:?set APP_URL in Coolify environment variables}'
       - 'DATABASE_URL=postgresql://$SERVICE_USER_POSTGRES:$SERVICE_PASSWORD_POSTGRES@postgresql/docmost?schema=public'
       - 'REDIS_URL=redis://redis:6379'
       - 'MAIL_DRIVER=${MAIL_DRIVER:-smtp}'
