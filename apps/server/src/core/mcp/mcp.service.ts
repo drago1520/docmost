@@ -3,6 +3,23 @@ import { HttpAdapterHost } from '@nestjs/core';
 import { FastifyInstance } from 'fastify';
 import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
+import { EnvironmentService } from '../../integrations/environment/environment.service';
+
+const slug = (title: string) =>
+  (title || 'untitled').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 70);
+
+// Headings can sit inside callouts, details etc, so walk the whole tree.
+const headings = (node: any, out: any[] = []) => {
+  if (node?.type === 'heading') {
+    out.push({
+      level: node.attrs?.level,
+      id: node.attrs?.id,
+      text: (node.content ?? []).map((t: any) => t.text ?? '').join(''),
+    });
+  }
+  for (const child of node?.content ?? []) headings(child, out);
+  return out;
+};
 
 // Every tool is a thin wrapper over one REST endpoint. The call goes through
 // Fastify in-process, so the endpoint's guard, validation, OAuth scope and
@@ -14,7 +31,7 @@ const TOOLS = [
     input: z.object({}),
     path: '/api/spaces',
     body: () => ({ limit: 100 }),
-    pick: (d: any) =>
+    pick: (d: any, _base?: string) =>
       d.items.map((s: any) => ({ id: s.id, name: s.name, slug: s.slug })),
   },
   {
@@ -24,7 +41,7 @@ const TOOLS = [
     input: z.object({ query: z.string(), spaceId: z.string().optional() }),
     path: '/api/search',
     body: (a: any) => ({ ...a, limit: 10 }),
-    pick: (d: any) =>
+    pick: (d: any, _base?: string) =>
       d.items.map((p: any) => ({
         id: p.id,
         slugId: p.slugId,
@@ -41,7 +58,7 @@ const TOOLS = [
     input: z.object({ pageId: z.string() }),
     path: '/api/pages/info',
     body: (a: any) => ({ ...a, format: 'markdown' }),
-    pick: (d: any) => ({
+    pick: (d: any, _base?: string) => ({
       id: d.id,
       slugId: d.slugId,
       title: d.title,
@@ -50,6 +67,23 @@ const TOOLS = [
       updatedAt: d.updatedAt,
       content: d.content,
     }),
+  },
+  {
+    name: 'page_outline',
+    description:
+      'List the headings of a page with a deep link to each, for jumping to a section.',
+    input: z.object({ pageId: z.string() }),
+    path: '/api/pages/info',
+    body: (a: any) => a,
+    pick: (d: any, base: string) => {
+      const pageUrl = `${base}/s/${d.space?.slug}/p/${slug(d.title)}-${d.slugId}`;
+      return {
+        id: d.id,
+        title: d.title,
+        url: pageUrl,
+        headings: headings(d.content).map((h) => ({ ...h, url: `${pageUrl}#${h.id}` })),
+      };
+    },
   },
   {
     name: 'create_page',
@@ -62,7 +96,7 @@ const TOOLS = [
     }),
     path: '/api/pages/create',
     body: (a: any) => ({ ...a, format: 'markdown' }),
-    pick: (d: any) => ({ id: d.id, slugId: d.slugId, title: d.title }),
+    pick: (d: any, _base?: string) => ({ id: d.id, slugId: d.slugId, title: d.title }),
   },
   {
     name: 'update_page',
@@ -76,17 +110,21 @@ const TOOLS = [
     }),
     path: '/api/pages/update',
     body: (a: any) => ({ ...a, format: 'markdown' }),
-    pick: (d: any) => ({ id: d.id, slugId: d.slugId, title: d.title }),
+    pick: (d: any, _base?: string) => ({ id: d.id, slugId: d.slugId, title: d.title }),
   },
 ];
 
 @Injectable()
 export class McpService {
-  constructor(private adapterHost: HttpAdapterHost) {}
+  constructor(
+    private adapterHost: HttpAdapterHost,
+    private env: EnvironmentService,
+  ) {}
 
   createServer(authorization: string): McpServer {
     const server = new McpServer({ name: 'docmost', version: '1.0.0' });
     const fastify = this.adapterHost.httpAdapter.getInstance<FastifyInstance>();
+    const base = this.env.getAppUrl().replace(/\/$/, '');
 
     for (const tool of TOOLS) {
       server.registerTool(
@@ -105,7 +143,7 @@ export class McpService {
               `${tool.path} failed with ${res.statusCode}: ${json.message ?? res.body}`,
             );
           }
-          const out = tool.pick(json.data);
+          const out = tool.pick(json.data, base);
           return {
             content: [
               {
