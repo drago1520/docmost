@@ -9,6 +9,7 @@ An MCP server at `/mcp`, built into the Nest app. Each tool wraps one REST endpo
 | `list_spaces` | none |
 | `search_pages` | `query`, optional `spaceId` |
 | `read_page` | `pageId` |
+| `page_outline` | `pageId`, returns every heading with a deep link |
 | `create_page` | `spaceId`, `title`, `content` (markdown), optional `parentPageId` |
 | `update_page` | `pageId`, optional `content` (markdown), `operation` (`replace`, `append`, `prepend`), optional `title` |
 
