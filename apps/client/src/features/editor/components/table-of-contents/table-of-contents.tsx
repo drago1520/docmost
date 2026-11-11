@@ -57,19 +57,9 @@ export const TableOfContents: FC<TableOfContentsProps> = (props) => {
     props.editor.commands.showTabAt(position);
     const { view } = props.editor;
 
-    const headerOffset = parseInt(
-      window.getComputedStyle(headerPaddingRef.current).getPropertyValue("top"),
-    );
-
     const { node } = view.domAtPos(position);
-    const element = node as HTMLElement;
-    const scrollPosition =
-      element.getBoundingClientRect().top + window.scrollY - headerOffset;
-
-    window.scrollTo({
-      top: scrollPosition,
-      behavior: "smooth",
-    });
+    // honours the heading's scroll-margin-top in core.css
+    (node as HTMLElement).scrollIntoView({ behavior: "smooth", block: "start" });
 
     const tr = view.state.tr;
     tr.setSelection(new TextSelection(tr.doc.resolve(position)));

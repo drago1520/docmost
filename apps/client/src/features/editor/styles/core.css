@@ -263,7 +263,11 @@
     opacity: 1;
   }
 
-  scroll-margin-top: calc(80px + var(--announcement-banners-height, 0px)); /* match your header height */
+  /* below both fixed bars: the app header (already includes announcement
+     banners) and the page header; links and the TOC both use this */
+  scroll-margin-top: calc(
+    var(--app-shell-header-offset, 0px) + var(--page-header-height) + 1.5rem
+  );
 }
 
 .ProseMirror-icon {
