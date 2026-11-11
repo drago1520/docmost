@@ -20,7 +20,13 @@ export const Heading = TiptapHeading.extend<TiptapHeadingOptions>({
             const { doc } = state;
 
             doc.descendants((node, pos) => {
-              if (node.type.name === "heading" && node.content.size > 1) {
+              // no id yet (UniqueID assigns it right after creation): a button
+              // now would copy a dead "#undefined" link, so wait for the id
+              if (
+                node.type.name === "heading" &&
+                node.content.size > 1 &&
+                node.attrs.id
+              ) {
                 const deco = Decoration.widget(
                   pos + node.nodeSize - 1,
                   () => {
@@ -53,7 +59,9 @@ export const Heading = TiptapHeading.extend<TiptapHeadingOptions>({
 
                     return icon;
                   },
-                  { side: 1 }, // render after node content
+                  // key lets ProseMirror reuse the DOM instead of rebuilding
+                  // every heading's button on each keystroke
+                  { side: 1, key: `heading-link-${node.attrs.id}` }, // render after node content
                 );
                 decorations.push(deco);
               }
