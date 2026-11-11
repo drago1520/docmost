@@ -119,7 +119,8 @@ export function SearchResultItem({
           pageResult.title,
           undefined,
           pageResult.matchedText,
-          pageResult.wholeWord
+          pageResult.wholeWord,
+          pageResult.highlight
         )}
         style={{ userSelect: "none" }}
       >

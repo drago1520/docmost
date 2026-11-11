@@ -40,7 +40,11 @@ export function useSearchNavigationParams({
 
     document.dispatchEvent(
       new CustomEvent("openSearchNavigationDialog", {
-        detail: { searchTerms: searchQueries, wholeWord: match === "whole" },
+        detail: {
+          searchTerms: searchQueries,
+          wholeWord: match === "whole",
+          context: searchParams.get("c"),
+        },
       }),
     );
   }, [editor, isSynced, searchKey, searchParams, showStatic]);

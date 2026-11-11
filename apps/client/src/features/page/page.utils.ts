@@ -29,6 +29,7 @@ function appendSearchParams(
   url: string,
   search?: string[],
   wholeWord?: boolean,
+  context?: string,
 ): string {
   if(search?.length === 0){
     return url;
@@ -44,6 +45,11 @@ function appendSearchParams(
     params.set("m", "whole");
   }
 
+  // the clicked snippet, so the page can jump to that occurrence
+  if (context && params.has("q")) {
+    params.set("c", context);
+  }
+
   const queryString = params.toString();
 
   return queryString ? `${url}?${queryString}` : url;
@@ -56,6 +62,7 @@ export const buildPageUrl = (
   anchorId?: string,
   search?: string[],
   wholeWord?: boolean,
+  context?: string,
 ): string => {
   let url: string;
   if (spaceName === undefined) {
@@ -64,7 +71,7 @@ export const buildPageUrl = (
     url = `/s/${spaceName}/p/${buildPageSlug(pageSlugId, pageTitle)}`;
   }
 
-  url = appendSearchParams(url, search, wholeWord);
+  url = appendSearchParams(url, search, wholeWord, context);
 
   return anchorId ? `${url}#${anchorId}` : url;
 };

@@ -10,6 +10,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import classes from "./search-replace.module.css";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
+import { pickSearchResult } from "./pick-search-result";
 
 interface SearchNavigationDialogProps {
   editor: ReturnType<typeof useEditor>;
@@ -19,6 +20,7 @@ interface SearchNavigationEvent extends CustomEvent {
   detail: {
     searchTerms: string[];
     wholeWord?: boolean;
+    context?: string;
   };
 }
 
@@ -76,6 +78,7 @@ function SearchNavigationDialog({ editor }: SearchNavigationDialogProps) {
     const nextParams = new URLSearchParams(location.search);
     nextParams.delete("q");
     nextParams.delete("m");
+    nextParams.delete("c");
     const nextSearch = nextParams.toString();
     navigate(
       {
@@ -89,9 +92,11 @@ function SearchNavigationDialog({ editor }: SearchNavigationDialogProps) {
 
   useEffect(() => {
     const handleOpen = (event: Event) => {
-      const { searchTerms: terms, wholeWord = true } = (
-        event as SearchNavigationEvent
-      ).detail;
+      const {
+        searchTerms: terms,
+        wholeWord = true,
+        context,
+      } = (event as SearchNavigationEvent).detail;
 
       if (!terms?.length || !isEditorReady(editor)) return;
 
@@ -99,6 +104,20 @@ function SearchNavigationDialog({ editor }: SearchNavigationDialogProps) {
       editor.commands.setSearchTerms(terms);
       editor.commands.setWholeWord(wholeWord);
       editor.commands.resetIndex();
+
+      if (context) {
+        const { doc } = editor.state;
+        const end = doc.content.size;
+        editor.storage.searchAndReplace.resultIndex = pickSearchResult(
+          context,
+          editor.storage.searchAndReplace.results.map(({ from, to }) => ({
+            before: doc.textBetween(Math.max(0, from - 300), from, " ", " "),
+            after: doc.textBetween(to, Math.min(end, to + 300), " ", " "),
+          })),
+        );
+        // empty transaction so the plugin redraws the "current" decoration
+        editor.view.dispatch(editor.state.tr.setMeta("addToHistory", false));
+      }
 
       const { results, resultIndex } = editor.storage.searchAndReplace;
       openRef.current = true;
