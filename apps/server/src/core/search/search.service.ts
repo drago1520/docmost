@@ -9,8 +9,7 @@ import { SpaceMemberRepo } from '@docmost/db/repos/space/space-member.repo';
 import { ShareRepo } from '@docmost/db/repos/share/share.repo';
 import { PagePermissionRepo } from '@docmost/db/repos/page/page-permission.repo';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const tsquery = require('pg-tsquery')();
+import { searchStrategies } from './search-strategies';
 
 @Injectable()
 export class SearchService {
@@ -40,7 +39,7 @@ export class SearchService {
     if (query.length < 1 && !browseByFilters) {
       return { items: [] };
     }
-    const searchQuery = tsquery(query + '*');
+    const searchQuery = searchStrategies[searchParams.mode ?? 'exact'](query);
     const titleOnly = searchParams.titleOnly === true;
     const titleQuery = query;
     // escape LIKE wildcards; ranking keeps the raw query

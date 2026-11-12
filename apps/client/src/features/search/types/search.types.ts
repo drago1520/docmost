@@ -41,6 +41,7 @@ export interface IPageSearchParams {
   creatorId?: string;
   labelIds?: string[];
   titleOnly?: boolean;
+  mode?: string;
   includeArchived?: boolean;
 }
 

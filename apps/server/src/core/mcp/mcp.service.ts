@@ -3,6 +3,7 @@ import { HttpAdapterHost } from '@nestjs/core';
 import { FastifyInstance } from 'fastify';
 import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
+import { SEARCH_MODES, SEARCH_MODE_HELP } from '../search/search-strategies';
 import { EnvironmentService } from '../../integrations/environment/environment.service';
 
 const slug = (title: string) =>
@@ -38,7 +39,18 @@ const TOOLS = [
     name: 'search_pages',
     description:
       'Full-text search over pages. Returns page ids for read_page and update_page.',
-    input: z.object({ query: z.string(), spaceId: z.string().optional() }),
+    input: z.object({
+      query: z.string(),
+      spaceId: z.string().optional(),
+      mode: z
+        .enum(SEARCH_MODES)
+        .default('scatteredPrefix')
+        .describe(
+          Object.entries(SEARCH_MODE_HELP)
+            .map(([m, h]) => `${m}: ${h}`)
+            .join('; '),
+        ),
+    }),
     path: '/api/search',
     body: (a: any) => ({ ...a, limit: 10 }),
     pick: (d: any, _base?: string) =>

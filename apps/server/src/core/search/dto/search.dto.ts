@@ -1,6 +1,7 @@
 import {
   IsArray,
   IsBoolean,
+  IsIn,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -8,6 +9,8 @@ import {
   IsUUID,
   MaxLength,
 } from 'class-validator';
+
+import { SEARCH_MODES, SearchMode } from '../search-strategies';
 
 export const SEARCH_QUERY_MAX_LENGTH = 200;
 
@@ -33,6 +36,10 @@ export class SearchDTO {
   @IsArray()
   @IsUUID('all', { each: true })
   labelIds?: string[];
+
+  @IsOptional()
+  @IsIn(SEARCH_MODES)
+  mode?: SearchMode;
 
   @IsOptional()
   @IsBoolean()

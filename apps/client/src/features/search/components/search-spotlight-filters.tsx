@@ -19,9 +19,11 @@ import {
   IconUser,
   IconTag,
   IconLetterCase,
+  IconSearch,
   IconArchive,
   IconX,
 } from "@tabler/icons-react";
+import { useLocalStorage } from "@mantine/hooks";
 import { useTranslation } from "react-i18next";
 import {
   useGetSpacesQuery,
@@ -64,6 +66,14 @@ export function SearchSpotlightFilters({
   );
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
   const [titleOnly, setTitleOnly] = useState(false);
+  const [matchType, setMatchType] = useLocalStorage<"exact" | "scattered" | "advanced">({
+    key: "search-match-type",
+    defaultValue: "exact",
+  });
+  const [prefix, setPrefix] = useLocalStorage({ key: "search-prefix", defaultValue: false });
+  // advanced passes the raw query through, so it has no prefix variant
+  const mode =
+    matchType === "advanced" ? "advanced" : prefix ? `${matchType}Prefix` : matchType;
   const [includeArchived, setIncludeArchived] = useState(false);
   const filterMenuTargetRef = useRef<HTMLButtonElement>(null);
   const [openedFilter, setOpenedFilter] = useState<string | null>(null);
@@ -82,6 +92,16 @@ export function SearchSpotlightFilters({
     : null;
   const spaceArchived = !!selectedSpaceData?.archivedAt;
 
+  const matchOptions: {
+    value: "exact" | "scattered" | "advanced";
+    label: string;
+    hint: string;
+  }[] = [
+    { value: "exact", label: t("Exact"), hint: t("Words next to each other, in order") },
+    { value: "scattered", label: t("Scattered"), hint: t("All words, any order, anywhere on the page") },
+    { value: "advanced", label: t("Advanced"), hint: t('Raw syntax: "phrase", or, -word, word*') },
+  ];
+
   const contentTypeOptions = [
     { value: "page", label: t("Pages") },
     {
@@ -99,6 +119,7 @@ export function SearchSpotlightFilters({
       creatorId: selectedCreatorId,
       labelIds: selectedLabelIds,
       titleOnly,
+      mode,
       includeArchived,
     });
   }, [
@@ -108,6 +129,7 @@ export function SearchSpotlightFilters({
     selectedCreatorId,
     selectedLabelIds,
     titleOnly,
+    mode,
     includeArchived,
     onFiltersChange,
   ]);
@@ -308,6 +330,63 @@ export function SearchSpotlightFilters({
         >
           {t("Title only")}
         </Button>
+      )}
+
+      {!isAiMode && !titleOnly && (
+        <Menu
+          shadow="md"
+          width={280}
+          position="bottom-start"
+          zIndex={getDefaultZIndex("max")}
+        >
+          <Menu.Target>
+            <Button
+              variant="subtle"
+              color="gray"
+              size="sm"
+              rightSection={<IconChevronDown size={14} />}
+              leftSection={<IconSearch size={16} />}
+              className={classes.filterButton}
+              fw={500}
+            >
+              {`${t("Match")}: ${matchOptions.find((o) => o.value === matchType)?.label}${prefix && matchType !== "advanced" ? ` + ${t("prefix")}` : ""}`}
+            </Button>
+          </Menu.Target>
+          <Menu.Dropdown>
+            {matchOptions.map((option) => (
+              <Menu.Item
+                key={option.value}
+                component={RadioMenuItem}
+                aria-checked={matchType === option.value}
+                onClick={() => setMatchType(option.value)}
+              >
+                <Group flex="1" gap="xs" wrap="nowrap" justify="space-between">
+                  <div>
+                    <Text size="sm">{option.label}</Text>
+                    <Text size="xs" c="dimmed">
+                      {option.hint}
+                    </Text>
+                  </div>
+                  {matchType === option.value && <IconCheck size={20} aria-hidden />}
+                </Group>
+              </Menu.Item>
+            ))}
+            <Menu.Divider />
+            <Menu.Item
+              component={CheckboxMenuItem}
+              aria-checked={prefix}
+              closeMenuOnClick={false}
+              disabled={matchType === "advanced"}
+              rightSection={<Switch checked={prefix} readOnly size="sm" tabIndex={-1} style={{ pointerEvents: "none" }} />}
+              onClick={() => setPrefix(!prefix)}
+            >
+              <Text size="sm">{t("Prefix")}</Text>
+              <Text size="xs" c="dimmed">
+                {t("Words can be the start of a longer word")}
+              </Text>
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
       )}
 
       {!isAiMode &&
